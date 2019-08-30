@@ -13,17 +13,7 @@ If you don't have one already, start by creating new project and configuring [Go
 
 ### Local Setup
 
-To setup this service you will need to clone this repo:
-
-```shell
-git clone https://github.com/mchmarny/go-grpc-template.git
-```
-
-And navigate into that directory:
-
-```shell
-cd go-grpc-template
-```
+To start, generate a [new repo from this template](https://github.com/mchmarny/go-grpc-template/generate), and clone your project.
 
 ### Config
 
