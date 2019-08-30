@@ -1,25 +1,39 @@
-# go-grpc-template
+# grpc-service
 
 
-Simple go [gRPC](https://grpc.io/) service template for Cloud Run.
+Simple go [gRPC](https://grpc.io/) service for Cloud Run.
 
 > Note, to keep this readme short, I will be asking you to execute scripts rather than listing here complete commands. You should really review each one of these scripts for content, and, to understand the individual commands so you can use them in the future.
 
 ## Pre-requirements
 
-### GCP Project and gcloud SDK
+### Setup
 
-If you don't have one already, start by creating new project and configuring [Google Cloud SDK](https://cloud.google.com/sdk/docs/). Similarly, if you have not done so already, you will have [set up Cloud Run](https://cloud.google.com/run/docs/setup).
+If you don't have one already, start by creating new project and configuring your [Google Cloud SDK](https://cloud.google.com/sdk/docs/). In addition, you will also need to install the `alpha` component.
 
-### Local Setup
+```shell
+gcloud components install alpha
+```
 
-To start, generate a [new repo from this template](https://github.com/mchmarny/go-grpc-template/generate), and clone your project.
+Also, if you have not done so already, you will have [set up Cloud Run](https://cloud.google.com/run/docs/setup).
+
+Finally, to start, clone this repo locally:
+
+```shell
+git clone https://github.com/GoogleCloudPlatform/golang-samples.git
+```
+
+And navigate into the sample directory:
+
+```shell
+cd golang-samples/run/grpc-service
+```
 
 ### Config
 
-All the variables used in this template are defined in the [bin/config](bin/config) file. You can edit these to your preferred values.
+All the variables used in this sample are defined in the [bin/config](bin/config) file. You can edit these to your preferred values.
 
-* `SERVICE` - (default "go-grpc-template") - this is the name of the service. It's used to build image, create service account, and in Cloud Run deployment. If you do need to change that, edit it before any other step.
+* `SERVICE` - (default "grpc-service") - this is the name of the service. It's used to build image, create service account, and in Cloud Run deployment. If you do need to change that, edit it before any other step.
 * `SERVICE_REGION` - (default "us-central1") - this is the GCP region to which you want to deploy this service. For complete list of regions where Cloud Run service is currently offered see https://cloud.google.com/about/locations/
 * `SERVICE_VERSION` - (default "v1") - this is the version of the service which is used to tag the container image as well as the Cloud Run service
 
@@ -127,7 +141,3 @@ Unary Request/Stream Response
 ```
 
 Thant's it. Hope it was helpful.
-
-## Disclaimer
-
-This is my personal project and it does not represent my employer. I take no responsibility for issues caused by this code. I do my best to ensure that everything works, but if something goes wrong, my apologies is all you will get.

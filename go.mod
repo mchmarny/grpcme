@@ -1,4 +1,4 @@
-module github.com/mchmarny/go-grpc-template
+module github.com/mchmarny/golang-samples/run/grpc-service
 
 go 1.12
 
