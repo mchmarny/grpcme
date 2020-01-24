@@ -13,7 +13,7 @@ CGO_ENABLED=0 \
 export SERVICE_URL=$(gcloud beta run services describe $SERVICE \
     --platform managed \
     --region $SERVICE_REGION \
-    --format="value(status.domain)")
+    --format="value(status.url)")
 
 
 echo -e "Client CLI generated
