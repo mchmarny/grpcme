@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package thingz.io.grpc.grpcme.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/mchmarny/grpcme/pkg/api/v1";
+
+// Service provides APIs for client applications to interact with the server.
+// It includes methods for basic ping functionality and streaming data.
+service Service {
+  // Ping checks the connectivity and response time of the service.
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  // Stream continuously sends and receives Ping messages.
+  // It is useful for scenarios where constant data flow is required.
+  rpc Stream(stream PingRequest) returns (stream PingResponse);
+}
+
+// Content represents the message content with metadata.
+message Content {
+  // Unique identifier for the message.
+  string id = 1;
+
+  // Actual content of the message in binary format.
+  google.protobuf.Any data = 2;
+
+  // Additional information about the message in key-value pairs.
+  map<string, string> metadata = 3;
+}
+
+// PingRequest represents the request for a Ping invocation.
+// It includes the content to be pinged and a timestamp.
+message PingRequest {
+  // The content to be sent in the Ping request.
+  Content content = 1;
+
+  // Timestamp when the message was sent, represented in Unix epoch format.
+  google.protobuf.Timestamp sent = 2;
+}
+
+// PingResponse represents the server's response to a Ping request.
+// It includes details like request ID and processing information.
+message PingResponse {
+  // Enum to represent the result types of the Ping operation.
+  enum ResultType {
+    RESULT_TYPE_UNSPECIFIED = 0; // Default value, unspecified result type.
+    RESULT_TYPE_SUCCESS = 1;     // Indicates successful processing.
+    RESULT_TYPE_ERROR = 2;       // Indicates an error occurred.
+  }
+
+  // Unique identifier correlating to the request.
+  string request_id = 1;
+
+  // Total number of messages received in the request.
+  int64 message_count = 2;
+
+  // Number of messages successfully processed.
+  int64 messages_processed = 3;
+
+  // Detailed information or description of the processing result.
+  string processing_details = 4;
+}

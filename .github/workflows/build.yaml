@@ -1,0 +1,85 @@
+name: build
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        description: 'Image name (e.g. my-image)'
+        required: true
+        type: string
+      go_version:
+        description: 'Go version to use'
+        required: false
+        type: string
+        default: '1.21.6'
+    outputs:
+      digest:
+        value: ${{ jobs.build.outputs.digest }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+
+    - name: Setup Go
+      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491  # v5.0.0
+      with:
+        go-version: '${{ inputs.go_version }}'
+
+    - run: go version
+
+    - name: Cache Go Modules
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2  # v4.0.0
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Checkout Code
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+
+    - name: Tidy Modules
+      run: |
+        go mod tidy
+        go mod vendor
+
+    - name: Get Version
+      run: |
+        set -euo pipefail
+        echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+    - name: Install ko
+      uses: ko-build/setup-ko@ace48d793556083a76f1e3e6068850c1f4a369aa  # v0.6
+
+    - name: Authenticate ko
+      run: |
+        ko login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+
+    # Note: ko build image ref will include BOTH, the tag AND digest of the image.
+    - name: Build Image
+      id: image
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        KO_DOCKER_REPO: ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}
+        GOFLAGS: "-ldflags=-X=main.version=${{ env.RELEASE_VERSION }}"
+        COSIGN_EXPERIMENTAL: "true"
+      run: |
+        set -euo pipefail
+        ko build internal/cmd/main.go \
+          --image-refs .digest \
+          --bare \
+          --tags ${{ env.RELEASE_VERSION }} \
+          --tags ${{ github.sha }} \
+          --tags latest
+
+        echo "digest=$(cat .digest)" >> "$GITHUB_OUTPUT"

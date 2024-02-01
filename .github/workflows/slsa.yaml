@@ -1,0 +1,87 @@
+name: slsa
+
+on:
+  workflow_call:
+    inputs:
+      image_digest:
+        description: 'Fully-qualified image digest to verify (registry/image@sha256:digest)'
+        required: true
+        type: string
+      cosign_version:
+        description: 'The version of cosign to use'
+        required: false
+        type: string
+        default: 'v2.0.1'
+
+permissions:
+  contents: read
+
+jobs:
+
+  conf:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      image: ${{ steps.conf.outputs.image }}
+      digest: ${{ steps.conf.outputs.digest }}
+    steps:
+    - name: Export Config
+      id: conf
+      run: |
+        echo "image=$(echo ${{ inputs.image_digest }} | cut -d@ -f1)" >> $GITHUB_OUTPUT
+        echo "digest=$(echo ${{ inputs.image_digest }} | cut -d@ -f2)" >> $GITHUB_OUTPUT
+
+  provenance:
+    needs:
+    - conf
+    permissions:
+      actions: read
+      packages: write
+      id-token: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.9.0
+    with:
+      image: ${{ needs.conf.outputs.image }}
+      digest: ${{ needs.conf.outputs.digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  verify:
+    needs:
+    - provenance
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+
+    - name: Checkout Code
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@9614fae9e5c5eddabb09f90a270fcb487c9f7149  # v3.3.0
+      with:
+        cosign-release: ${{ inputs.cosign_version }}
+
+    - name: Auth Cosign
+      run: |
+        cosign login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+
+    # SLSA provenance verification using cosign and CUE policy.
+    - name: Verify SLSA Provenance (cosign)
+      run: |
+        cosign verify-attestation \
+          --type slsaprovenance \
+          --certificate-identity-regexp "^https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v[0-9]+.[0-9]+.[0-9]+$" \
+          --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+          --policy policy/provenance.cue \
+          ${{ inputs.image_digest }}
+
+    - uses: slsa-framework/slsa-verifier/actions/installer@7e1e47d7d793930ab0082c15c2b971fdb53a3c95  # v2.4.1
+
+    # SLSA provenance verification using slsa-verifier.
+    - name: Verify SLSA Provenance (slsa-verifier)
+      run: |-
+        slsa-verifier verify-image ${{ inputs.image_digest }} \
+          --source-uri "github.com/$GITHUB_REPOSITORY" \
+          --source-tag "$GITHUB_REF_NAME"

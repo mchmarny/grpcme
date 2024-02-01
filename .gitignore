@@ -1,9 +1,27 @@
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.out
+# Mac 
 .DS_Store
-bin/cli
+
+# Test binaries
+*.test
+tmp
+
+# Coverage
+*.out
+
+# Binaries
+bin
+dist
+
+# Keys 
+cosign.*
+*.pem
+
+# ko 
+/.digest
+
+# Terraform
+*.tfstate
+*.tfvars
+*.hcl
+.terraform
+*.backup

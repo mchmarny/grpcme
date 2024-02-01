@@ -1,0 +1,123 @@
+name: test
+
+on:
+  workflow_call:
+    inputs:
+      go_version:
+        description: 'Go version to use'
+        required: false
+        type: string
+        default: '1.21.6'
+      scan_severity:
+        description: 'Trivy scan severity'
+        required: false
+        type: string
+        default: 'CRITICAL,HIGH'
+      golangci_version:
+        description: 'golangci version to use'
+        required: false
+        type: string
+        default: v1.55
+
+permissions:
+  contents: read
+jobs:
+
+  unit:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+    - name: Setup Go
+      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491  # v5.0.0
+      with:
+        go-version: '${{ inputs.go_version }}'
+    - run: go version
+    - name: Cache Go Modules
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2  # v4.0.0
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Checkout Code
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v3.4.0
+    - name: Tidy Modules
+      run: |
+        make tidy
+    - name: Unit Test
+      run: |
+        make test
+    - name: Parse Coverage
+      uses: codecov/codecov-action@4fe8c5f003fae66aa5ebb77cfd3e7bfbbda0b6b0  # v3.1.5
+      with:
+        flags: unittests  # optional
+
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+    - name: Setup Go
+      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491  # v5.0.0
+      with:
+        go-version: '${{ inputs.go_version }}'
+    - run: go version
+    - name: Cache Go Modules
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2  # v4.0.0
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Checkout Code
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v3.4.0
+    - name: Tidy Modules
+      run: |
+        make tidy
+    - name: Config Go Lint
+      id: golangci_config
+      uses: andstor/file-existence-action@20b4d2e596410855db8f9ca21e96fbe18e12930b  # v2.0
+      with:
+        files: .golangci.yaml
+    - name: Lint Go
+      if: steps.golangci_config.outputs.files_exists == 'true'
+      uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc  # v3.7.0
+      with:
+        version: ${{ inputs.golangci_version }}
+    - name: Config YAML Lint
+      id: yamllint_config
+      uses: andstor/file-existence-action@20b4d2e596410855db8f9ca21e96fbe18e12930b  # v2.0
+      with:
+        files: .yamllint
+    - name: Lint YAML
+      if: steps.yamllint_config.outputs.files_exists == 'true'
+      uses: karancode/yamllint-github-action@fdef6bc189425ecc84cc4543b2674566c0827053  # master
+      with:
+        yamllint_config_filepath: .yamllint
+
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v3.4.0
+    - name: Scan Repo
+      uses: aquasecurity/trivy-action@d43c1f16c00cfd3978dde6c07f4bbcf9eb6993ca  # master
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: true
+        hide-progress: true
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: ${{ inputs.scan_severity }}
+        exit-code: '1'
+    - name: Upload Report
+      uses: github/codeql-action/upload-sarif@168b99b3c22180941ae7dbdd5f5c9678ede476ba  # v2.11.6
+      with:
+        sarif_file: 'trivy-results.sarif'
