@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,16 +9,25 @@ import (
 
 func TestClient(t *testing.T) {
 	t.Run("new client sans address", func(t *testing.T) {
-		if _, err := NewClient(""); err == nil {
-			t.Fatalf("expected error without address")
-		}
+		_, err := NewClient("")
+		assert.Error(t, err)
 	})
 
+	c := &SimpleClient{}
+
 	t.Run("close client", func(t *testing.T) {
-		c := &SimpleClient{}
-		if err := c.Close(); err != nil {
-			t.Fatalf("expected no error on close")
-		}
+		err := c.Close()
+		assert.NoError(t, err)
 		assert.Empty(t, c.GetTarget())
+	})
+
+	t.Run("scalar sans message", func(t *testing.T) {
+		_, err := c.Scalar(context.TODO(), "")
+		assert.Error(t, err)
+	})
+
+	t.Run("stream sans iterator", func(t *testing.T) {
+		err := c.Stream(context.TODO(), nil)
+		assert.Error(t, err)
 	})
 }

@@ -19,6 +19,10 @@ func (c *SimpleClient) Stream(ctx context.Context, it provider.MessageIterator) 
 		return errors.New("message provider is required")
 	}
 
+	if !c.Connected() {
+		return errors.New("client is not connected")
+	}
+
 	// Stream example
 	stream, err := c.service.Stream(ctx)
 	if err != nil {

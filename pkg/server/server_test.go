@@ -28,6 +28,19 @@ func TestScalar(t *testing.T) {
 	defer s.Stop()
 
 	t.Run("scalar sans args", func(t *testing.T) {
+		_, err := NewServer("", "", "")
+		assert.Error(t, err)
+		_, err = NewServer("test", "", "")
+		assert.Error(t, err)
+		_, err = NewServer("test", "test", "")
+		assert.Error(t, err)
+		_, err = NewServer("test", "", "test")
+		assert.Error(t, err)
+		_, err = NewServer("", "", "test")
+		assert.Error(t, err)
+	})
+
+	t.Run("scalar sans args", func(t *testing.T) {
 		if _, err := s.Scalar(ctx, nil); err == nil {
 			t.Fatalf("expected error on scalar without args")
 		}

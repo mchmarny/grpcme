@@ -18,6 +18,10 @@ func (c *SimpleClient) Scalar(ctx context.Context, message string) (string, erro
 		return "", errors.New("message is required")
 	}
 
+	if !c.Connected() {
+		return "", errors.New("client is not connected")
+	}
+
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()

@@ -8,6 +8,7 @@ import (
 	"github.com/mchmarny/grpcme/pkg/provider"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -54,6 +55,10 @@ func (c *SimpleClient) Close() error {
 		return c.connection.Close()
 	}
 	return nil
+}
+
+func (c *SimpleClient) Connected() bool {
+	return c.service != nil && c.connection != nil && c.connection.GetState() == connectivity.Ready
 }
 
 func (c *SimpleClient) GetTarget() string {
