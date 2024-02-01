@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 
@@ -8,7 +9,9 @@ import (
 )
 
 var (
-	address string
+	address     string
+	name        = "server"
+	environment = "development"
 
 	// set at build time
 	version = "v0.0.1-default"
@@ -16,9 +19,22 @@ var (
 
 func main() {
 	flag.StringVar(&address, "address", ":50051", "Server address (host:port)")
+	flag.StringVar(&name, "name", name, "Server name (default: server)")
+	flag.StringVar(&environment, "environment", environment, "Server environment (default: development)")
 	flag.Parse()
 
-	if err := server.Run(version, address); err != nil {
+	// create server
+	log.Print("creating server...")
+	s, err := server.NewServer(name, version, environment)
+	if err != nil {
+		log.Fatalf("error while creating server: %v", err)
+	}
+
+	// run server
+	log.Printf("starting server: %s", s.String())
+	if err := s.Run(context.Background(), address); err != nil {
 		log.Fatalf("error while running server: %v", err)
 	}
+
+	log.Printf("done")
 }

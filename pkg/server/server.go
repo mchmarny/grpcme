@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"sync/atomic"
@@ -14,37 +15,79 @@ import (
 
 const (
 	protocol = "tcp" // network protocol
+	success  = "processed successfully"
 )
 
-// server is used to implement your Service.
-type server struct {
-	pb.UnimplementedServiceServer
-	counter atomic.Uint64 // counter for messages
+func NewServer(name, version, environment string) (*Server, error) {
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+	if version == "" {
+		return nil, errors.New("version is required")
+	}
+	if environment == "" {
+		return nil, errors.New("environment is required")
+	}
+
+	return &Server{
+		name:        name,
+		version:     version,
+		environment: environment,
+	}, nil
 }
 
-func (s *server) GetCounter() int64 {
+// Server is used to implement your Service.
+type Server struct {
+	pb.UnimplementedServiceServer
+	counter     atomic.Uint64 // counter for messages
+	name        string        // server name
+	version     string        // server version
+	environment string        // server environment
+}
+
+func (s *Server) String() string {
+	return fmt.Sprintf("%s (%s) v%s", s.name, s.environment, s.version)
+}
+
+func (s *Server) GetCounter() int64 {
 	return int64(s.counter.Load())
 }
 
-func (s *server) processContent(in *pb.Content) *pb.Response {
+func (s *Server) GetName() string {
+	return s.name
+}
+
+func (s *Server) GetVersion() string {
+	return s.version
+}
+
+func (s *Server) GetEnvironment() string {
+	return s.environment
+}
+
+func (s *Server) processContent(in *pb.Content) *pb.Response {
 	s.counter.Add(1)
 	return &pb.Response{
 		RequestId:         in.GetId(),
 		MessageCount:      s.GetCounter(),
 		MessagesProcessed: s.GetCounter(),
-		ProcessingDetails: "processed successfully",
+		ProcessingDetails: success,
 	}
 }
 
 // Scalar implements the single method of the Service.
-func (s *server) Scalar(_ context.Context, in *pb.Request) (*pb.Response, error) {
+func (s *Server) Scalar(_ context.Context, in *pb.Request) (*pb.Response, error) {
+	if in == nil {
+		return nil, errors.New("request is required")
+	}
+
 	c := in.GetContent()
 	log.Printf("received scalar: %v", c.GetData())
 	return s.processContent(c), nil
 }
 
 // Stream implements the Stream method of the Service.
-func (s *server) Stream(stream pb.Service_StreamServer) error {
+func (s *Server) Stream(stream pb.Service_StreamServer) error {
 	for {
 		in, err := stream.Recv()
 		if err != nil {
@@ -60,22 +103,24 @@ func (s *server) Stream(stream pb.Service_StreamServer) error {
 	}
 }
 
-func Run(version, address string) error {
-	if address == "" {
-		return errors.New("address is required")
-	}
-
-	log.Printf("starting server (%s)...", version)
-
+func (s *Server) Run(ctx context.Context, address string) error {
 	// Create a listener on the specified address.
 	lis, err := net.Listen(protocol, address)
 	if err != nil {
-		return errors.Wrap(err, "failed to listen")
+		return errors.Wrapf(err, "failed to listen: %s", address)
 	}
-	s := grpc.NewServer()
-	pb.RegisterServiceServer(s, &server{})
-	log.Printf("server (%s) listening at %v", version, lis.Addr())
-	if err := s.Serve(lis); err != nil {
+	return s.serve(ctx, lis)
+}
+
+func (s *Server) serve(_ context.Context, lis net.Listener) error {
+	if lis == nil {
+		return errors.New("listener is required")
+	}
+
+	server := grpc.NewServer()
+	pb.RegisterServiceServer(server, s)
+	log.Printf("server listening: %v", lis.Addr())
+	if err := server.Serve(lis); err != nil && err.Error() != "closed" {
 		return errors.Wrap(err, "failed to serve")
 	}
 	return nil
