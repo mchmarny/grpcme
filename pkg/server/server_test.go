@@ -25,6 +25,7 @@ func TestScalar(t *testing.T) {
 
 	s := startTestServer(ctx, t)
 	assert.NotNil(t, s)
+	defer s.Stop()
 
 	t.Run("scalar sans args", func(t *testing.T) {
 		if _, err := s.Scalar(ctx, nil); err == nil {
@@ -56,6 +57,12 @@ func TestScalar(t *testing.T) {
 		assert.Greater(t, res.GetMessageCount(), int64(0))
 		assert.Equal(t, res.GetMessagesProcessed(), res.GetMessageCount())
 		assert.Equal(t, success, res.GetProcessingDetails())
+	})
+
+	t.Run("stream sans args", func(t *testing.T) {
+		if err := s.Stream(nil); err == nil {
+			t.Fatalf("expected error on stream without args")
+		}
 	})
 }
 

@@ -39,6 +39,8 @@ func NewServer(name, version, environment string) (*Server, error) {
 // Server is used to implement your Service.
 type Server struct {
 	pb.UnimplementedServiceServer
+	server      *grpc.Server
+	listener    net.Listener
 	counter     atomic.Uint64 // counter for messages
 	name        string        // server name
 	version     string        // server version
@@ -65,6 +67,18 @@ func (s *Server) GetEnvironment() string {
 	return s.environment
 }
 
+func (s *Server) Stop() {
+	log.Printf("stopping server: %s", s.String())
+	if s.listener != nil {
+		if err := s.listener.Close(); err != nil {
+			log.Printf("error closing listener: %v", err)
+		}
+	}
+	if s.server != nil {
+		s.server.Stop()
+	}
+}
+
 func (s *Server) processContent(in *pb.Content) *pb.Response {
 	s.counter.Add(1)
 	return &pb.Response{
@@ -88,6 +102,10 @@ func (s *Server) Scalar(_ context.Context, in *pb.Request) (*pb.Response, error)
 
 // Stream implements the Stream method of the Service.
 func (s *Server) Stream(stream pb.Service_StreamServer) error {
+	if stream == nil {
+		return errors.New("stream is required")
+	}
+
 	for {
 		in, err := stream.Recv()
 		if err != nil {
@@ -103,7 +121,7 @@ func (s *Server) Stream(stream pb.Service_StreamServer) error {
 	}
 }
 
-func (s *Server) Run(ctx context.Context, address string) error {
+func (s *Server) Start(ctx context.Context, address string) error {
 	// Create a listener on the specified address.
 	lis, err := net.Listen(protocol, address)
 	if err != nil {
@@ -116,11 +134,11 @@ func (s *Server) serve(_ context.Context, lis net.Listener) error {
 	if lis == nil {
 		return errors.New("listener is required")
 	}
-
-	server := grpc.NewServer()
-	pb.RegisterServiceServer(server, s)
-	log.Printf("server listening: %v", lis.Addr())
-	if err := server.Serve(lis); err != nil && err.Error() != "closed" {
+	s.listener = lis
+	s.server = grpc.NewServer()
+	pb.RegisterServiceServer(s.server, s)
+	log.Printf("server listening: %v", s.listener.Addr())
+	if err := s.server.Serve(s.listener); err != nil && err.Error() != "closed" {
 		return errors.Wrap(err, "failed to serve")
 	}
 	return nil

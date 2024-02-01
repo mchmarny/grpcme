@@ -29,10 +29,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("error while creating server: %v", err)
 	}
+	defer s.Stop()
 
 	// run server
 	log.Printf("starting server: %s", s.String())
-	if err := s.Run(context.Background(), address); err != nil {
+	if err := s.Start(context.Background(), address); err != nil {
 		log.Fatalf("error while running server: %v", err)
 	}
 
