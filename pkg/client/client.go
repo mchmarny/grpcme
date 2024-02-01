@@ -3,88 +3,59 @@ package client
 import (
 	"context"
 	"log"
-	"time"
 
-	"github.com/google/uuid"
 	pb "github.com/mchmarny/grpcme/pkg/api/v1"
+	"github.com/mchmarny/grpcme/pkg/provider"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	anypb "google.golang.org/protobuf/types/known/anypb"
-	tspb "google.golang.org/protobuf/types/known/timestamppb"
-	wrbp "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func Run(version, target, message string) error {
+var _ Client = (*SimpleClient)(nil)
+
+type Client interface {
+	Scalar(ctx context.Context, message string) (string, error)
+	Stream(ctx context.Context, it provider.MessageIterator) error
+}
+
+func NewClient(target string) (Client, error) {
 	if target == "" {
-		return errors.New("target is required")
-	}
-	if message == "" {
-		return errors.New("message is required")
+		return nil, errors.New("target is required")
 	}
 
-	log.Printf("starting client (%s)...", version)
+	log.Printf("starting client (%s)...", target)
+
+	c := &SimpleClient{
+		target: target,
+	}
 
 	// Set up a connection to the server.
 	creds := grpc.WithTransportCredentials(insecure.NewCredentials())
-	conn, err := grpc.Dial(target, creds, grpc.WithBlock())
+	conn, err := grpc.Dial(c.GetTarget(), creds, grpc.WithBlock())
 	if err != nil {
-		return errors.Wrap(err, "unable to connect")
-	}
-	defer conn.Close()
-	c := pb.NewServiceClient(conn)
-
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	// create message with wrapper
-	a, err := anypb.New(wrbp.String(message))
-	if err != nil {
-		return errors.Wrap(err, "unable to create message")
+		return nil, errors.Wrapf(err, "unable to connect to %s", target)
 	}
 
-	// Ping example
-	r, err := c.Ping(ctx, &pb.PingRequest{
-		Content: &pb.Content{
-			Id:   uuid.New().String(),
-			Data: a,
-		},
-		Sent: tspb.Now(),
-	})
-	if err != nil {
-		return errors.Wrap(err, "could not ping")
-	}
-	log.Printf("ping Response: %s", r.GetProcessingDetails())
+	c.connection = conn
+	c.service = pb.NewServiceClient(conn)
 
-	// Stream example
-	stream, err := c.Stream(ctx)
-	if err != nil {
-		return errors.Wrap(err, "could not create stream")
-	}
+	return c, nil
+}
 
-	// Send messages to the stream
-	for i := 0; i < 5; i++ {
-		if err := stream.Send(&pb.PingRequest{
-			Content: &pb.Content{
-				Id:   uuid.New().String(),
-				Data: a,
-			},
-			Sent: tspb.Now(),
-		}); err != nil {
-			return errors.Wrap(err, "failed to send a message")
-		}
+type SimpleClient struct {
+	target     string
+	connection *grpc.ClientConn
+	service    pb.ServiceClient
+}
 
-		reply, err := stream.Recv()
-		if err != nil {
-			return errors.Wrap(err, "failed to receive a reply")
-		}
-
-		log.Printf("stream response: %s", reply.GetProcessingDetails())
-	}
-
-	if err := stream.CloseSend(); err != nil {
-		return errors.Wrap(err, "failed to close stream")
+// Close closes the created resources (e.g. connection).
+func (c *SimpleClient) Close() error {
+	if c.connection != nil {
+		return c.connection.Close()
 	}
 	return nil
+}
+
+func (c *SimpleClient) GetTarget() string {
+	return c.target
 }

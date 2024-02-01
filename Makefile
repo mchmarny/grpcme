@@ -48,9 +48,13 @@ vulncheck: ## Checks for soource vulnerabilities
 server: ## Runs uncpiled version of the server
 	go run cmd/server/main.go
 
-.PHONY: client
-client: ## Runs uncpiled version of the client
-	go run cmd/client/main.go
+.PHONY: ui
+ui: ## Runs uncpiled version of the ui client
+	go run cmd/ui/main.go
+
+.PHONY: headless
+headless: ## Runs uncpiled version of the headless client
+	go run cmd/headless/main.go
 
 .PHONY: image
 image: ## Builds the server images
@@ -58,10 +62,14 @@ image: ## Builds the server images
 	KO_DOCKER_REPO=$(REG_URI)/$(REPO_NAME)-server \
     GOFLAGS="-ldflags=-X=main.version=$(VERSION)" \
     ko build cmd/server/main.go --image-refs .digest --bare --tags $(VERSION),latest
-	@echo "Building client image..."
-	KO_DOCKER_REPO=$(REG_URI)/$(REPO_NAME)-client \
+	@echo "Building ui image..."
+	KO_DOCKER_REPO=$(REG_URI)/$(REPO_NAME)-ui \
     GOFLAGS="-ldflags=-X=main.version=$(VERSION)" \
-    ko build cmd/client/main.go --image-refs .digest --bare --tags $(VERSION),latest
+    ko build cmd/ui/main.go --image-refs .digest --bare --tags $(VERSION),latest
+	@echo "Building headless image..."
+	KO_DOCKER_REPO=$(REG_URI)/$(REPO_NAME)-headless \
+    GOFLAGS="-ldflags=-X=main.version=$(VERSION)" \
+    ko build cmd/headless/main.go --image-refs .digest --bare --tags $(VERSION),latest
 
 .PHONY: tag
 tag: ## Creates release tag 

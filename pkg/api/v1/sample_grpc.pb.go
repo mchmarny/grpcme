@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Service_Ping_FullMethodName   = "/thingz.io.grpc.grpcme.v1.Service/Ping"
+	Service_Scalar_FullMethodName = "/thingz.io.grpc.grpcme.v1.Service/Scalar"
 	Service_Stream_FullMethodName = "/thingz.io.grpc.grpcme.v1.Service/Stream"
 )
 
@@ -27,9 +27,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ServiceClient interface {
-	// Ping checks the connectivity and response time of the service.
-	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
-	// Stream continuously sends and receives Ping messages.
+	// Scalar checks the connectivity and response time of the service.
+	Scalar(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
+	// Stream continuously sends and receives response messages.
 	// It is useful for scenarios where constant data flow is required.
 	Stream(ctx context.Context, opts ...grpc.CallOption) (Service_StreamClient, error)
 }
@@ -42,9 +42,9 @@ func NewServiceClient(cc grpc.ClientConnInterface) ServiceClient {
 	return &serviceClient{cc}
 }
 
-func (c *serviceClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
-	out := new(PingResponse)
-	err := c.cc.Invoke(ctx, Service_Ping_FullMethodName, in, out, opts...)
+func (c *serviceClient) Scalar(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, Service_Scalar_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +61,8 @@ func (c *serviceClient) Stream(ctx context.Context, opts ...grpc.CallOption) (Se
 }
 
 type Service_StreamClient interface {
-	Send(*PingRequest) error
-	Recv() (*PingResponse, error)
+	Send(*Request) error
+	Recv() (*Response, error)
 	grpc.ClientStream
 }
 
@@ -70,12 +70,12 @@ type serviceStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *serviceStreamClient) Send(m *PingRequest) error {
+func (x *serviceStreamClient) Send(m *Request) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *serviceStreamClient) Recv() (*PingResponse, error) {
-	m := new(PingResponse)
+func (x *serviceStreamClient) Recv() (*Response, error) {
+	m := new(Response)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -86,9 +86,9 @@ func (x *serviceStreamClient) Recv() (*PingResponse, error) {
 // All implementations must embed UnimplementedServiceServer
 // for forward compatibility
 type ServiceServer interface {
-	// Ping checks the connectivity and response time of the service.
-	Ping(context.Context, *PingRequest) (*PingResponse, error)
-	// Stream continuously sends and receives Ping messages.
+	// Scalar checks the connectivity and response time of the service.
+	Scalar(context.Context, *Request) (*Response, error)
+	// Stream continuously sends and receives response messages.
 	// It is useful for scenarios where constant data flow is required.
 	Stream(Service_StreamServer) error
 	mustEmbedUnimplementedServiceServer()
@@ -98,8 +98,8 @@ type ServiceServer interface {
 type UnimplementedServiceServer struct {
 }
 
-func (UnimplementedServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+func (UnimplementedServiceServer) Scalar(context.Context, *Request) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Scalar not implemented")
 }
 func (UnimplementedServiceServer) Stream(Service_StreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method Stream not implemented")
@@ -117,20 +117,20 @@ func RegisterServiceServer(s grpc.ServiceRegistrar, srv ServiceServer) {
 	s.RegisterService(&Service_ServiceDesc, srv)
 }
 
-func _Service_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PingRequest)
+func _Service_Scalar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ServiceServer).Ping(ctx, in)
+		return srv.(ServiceServer).Scalar(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Service_Ping_FullMethodName,
+		FullMethod: Service_Scalar_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ServiceServer).Ping(ctx, req.(*PingRequest))
+		return srv.(ServiceServer).Scalar(ctx, req.(*Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -140,8 +140,8 @@ func _Service_Stream_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type Service_StreamServer interface {
-	Send(*PingResponse) error
-	Recv() (*PingRequest, error)
+	Send(*Response) error
+	Recv() (*Request, error)
 	grpc.ServerStream
 }
 
@@ -149,12 +149,12 @@ type serviceStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *serviceStreamServer) Send(m *PingResponse) error {
+func (x *serviceStreamServer) Send(m *Response) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *serviceStreamServer) Recv() (*PingRequest, error) {
-	m := new(PingRequest)
+func (x *serviceStreamServer) Recv() (*Request, error) {
+	m := new(Request)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -169,8 +169,8 @@ var Service_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Ping",
-			Handler:    _Service_Ping_Handler,
+			MethodName: "Scalar",
+			Handler:    _Service_Scalar_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

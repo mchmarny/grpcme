@@ -25,9 +25,9 @@ type server struct {
 	pb.UnimplementedServiceServer
 }
 
-func processContent(in *pb.Content) *pb.PingResponse {
+func processContent(in *pb.Content) *pb.Response {
 	counter.Add(1)
-	return &pb.PingResponse{
+	return &pb.Response{
 		RequestId:         in.GetId(),
 		MessageCount:      int64(counter.Load()),
 		MessagesProcessed: int64(counter.Load()),
@@ -35,10 +35,10 @@ func processContent(in *pb.Content) *pb.PingResponse {
 	}
 }
 
-// Ping implements the Ping method of the Service.
-func (s *server) Ping(_ context.Context, in *pb.PingRequest) (*pb.PingResponse, error) {
+// Scalar implements the single method of the Service.
+func (s *server) Scalar(_ context.Context, in *pb.Request) (*pb.Response, error) {
 	c := in.GetContent()
-	log.Printf("received ping: %v", c.GetData())
+	log.Printf("received scalar: %v", c.GetData())
 	return processContent(c), nil
 }
 

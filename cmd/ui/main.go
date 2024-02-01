@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 
@@ -20,7 +21,18 @@ func main() {
 	flag.StringVar(&message, "message", "hello from client", "Message to send to server")
 	flag.Parse()
 
-	if err := client.Run(version, target, message); err != nil {
+	log.Printf("creating client (%s)...", version)
+
+	c, err := client.NewClient(target)
+	if err != nil {
+		log.Fatalf("error while creating client: %v", err)
+	}
+
+	log.Printf("sending scalar message: %s", message)
+	m, err := c.Scalar(context.Background(), message)
+	if err != nil {
 		log.Fatalf("error while running client: %v", err)
 	}
+
+	log.Printf("received response: %s", m)
 }
