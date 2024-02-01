@@ -16,21 +16,22 @@ const (
 	protocol = "tcp" // network protocol
 )
 
-var (
-	counter atomic.Uint64 // counter for messages
-)
-
 // server is used to implement your Service.
 type server struct {
 	pb.UnimplementedServiceServer
+	counter atomic.Uint64 // counter for messages
 }
 
-func processContent(in *pb.Content) *pb.Response {
-	counter.Add(1)
+func (s *server) GetCounter() int64 {
+	return int64(s.counter.Load())
+}
+
+func (s *server) processContent(in *pb.Content) *pb.Response {
+	s.counter.Add(1)
 	return &pb.Response{
 		RequestId:         in.GetId(),
-		MessageCount:      int64(counter.Load()),
-		MessagesProcessed: int64(counter.Load()),
+		MessageCount:      s.GetCounter(),
+		MessagesProcessed: s.GetCounter(),
 		ProcessingDetails: "processed successfully",
 	}
 }
@@ -39,7 +40,7 @@ func processContent(in *pb.Content) *pb.Response {
 func (s *server) Scalar(_ context.Context, in *pb.Request) (*pb.Response, error) {
 	c := in.GetContent()
 	log.Printf("received scalar: %v", c.GetData())
-	return processContent(c), nil
+	return s.processContent(c), nil
 }
 
 // Stream implements the Stream method of the Service.
@@ -53,7 +54,7 @@ func (s *server) Stream(stream pb.Service_StreamServer) error {
 		c := in.GetContent()
 		log.Printf("received stream: %v", c.GetData())
 
-		if err := stream.Send(processContent(c)); err != nil {
+		if err := stream.Send(s.processContent(c)); err != nil {
 			return errors.Wrap(err, "failed to send")
 		}
 	}
