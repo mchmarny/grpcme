@@ -22,8 +22,8 @@ github.com/pkg/errors
 github.com/pmezard/go-difflib/difflib
 # github.com/rogpeppe/go-internal v1.10.0
 ## explicit; go 1.19
-# github.com/stretchr/testify v1.8.4
-## explicit; go 1.20
+# github.com/stretchr/testify v1.9.0
+## explicit; go 1.17
 github.com/stretchr/testify/assert
 # golang.org/x/net v0.20.0
 ## explicit; go 1.18
